@@ -26,6 +26,7 @@ public struct Lines: Sequence, IteratorProtocol {
             if var dc = self.dataCache {
                 if let nd = newData {
                     dc.append(nd)
+                    self.dataCache = dc
                 }
             } else {
                 self.dataCache = newData
@@ -51,43 +52,31 @@ public struct Lines: Sequence, IteratorProtocol {
         }
 
         repeat {
-            let parts = self.dataCache!.split(separator: self.separator,
-                                              maxSplits: 1,
-                                              omittingEmptySubsequences: false)
-            self.dataCache = nil
-            if parts.count == 2 {
-                self.dataCache = parts[1]
-                return String(data: parts[0], encoding: .ascii)
+            if let sepIdx = self.dataCache!.firstIndex(of: self.separator) {
+                let retStr = String(data: self.dataCache!.prefix(upTo: sepIdx),
+                                    encoding: .ascii)
+                self.dataCache = self.dataCache!.dropFirst(sepIdx + 1)
+                return retStr
             }
-            // If we reach here, then we split and got only a single Data element.
-            // That means no NL character.  We may be at the very end of our buffer
-            // and just need to refill it.  Try that.
+            // So, we have data, but no separator.  This could go on until
+            // EOF.  Let's try
             do {
                 if try self.refill() {
-                    // Ok.  We got more data.  Let's append that to
-                    // our single chunk and try again.
-                    var newCache = parts[0]
-                    newCache.append(self.dataCache!)
-                    self.dataCache = newCache
-                } else {
-                    // No more data.  Must be at EOL.  Return what we have.
-                    // BUT WAIT!  There's more!  Inexplicably, a Data.split()
-                    // on a zero-length Data instance returns... wait for it...
-                    // A one-length array of [Data] with a single zero-length
-                    // Data instance.  Why?  IDK.  IMO, it should return a
-                    // zero-length [Data] Array.  Oh well.  Life goes on.
-                    // However, one must distinguish between an original
-                    // zero-length Data and a Data with a single sep character...
-                    if parts[0].count == 0 {
-                        return nil
-                    }
-                    return String(data: parts[0], encoding: .ascii)
+                    continue
                 }
             } catch {
-                // Something failed in read, but we do have data.  Return that.
-                // The next iteration may fail-fail
-                return String(data: parts[0], encoding: .ascii)
+                // Something's gone badly wrong.  Return what we have.
+                // Might catch error on the next next()
             }
+            // If we land here, we've tried (and maybe succeeded) to refill,
+            // but we still have not found sep.  We're at EOF.  Return what
+            // we have.
+            if self.dataCache!.isEmpty {
+                return nil
+            }
+            let retStr = String(data: self.dataCache!, encoding: .ascii)
+            self.dataCache = nil
+            return retStr
         } while true
     }
 
