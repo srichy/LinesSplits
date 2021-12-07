@@ -1,17 +1,20 @@
 //
 //  LinesSplits.swift
-//  D05
 //
 //  Created by Steven Rich on 12/4/21.
 //
 
-
 import Foundation
+
+public enum LinesError: Error {
+    case cannotOpenFile(String)
+}
 
 public struct Lines: Sequence, IteratorProtocol {
     let fromFile: String?
     let fileHandle: FileHandle?
     let chunkSize: Int
+    let separator: UInt8
     var dataCache: Data?
 
     public typealias Element = String
@@ -48,7 +51,7 @@ public struct Lines: Sequence, IteratorProtocol {
         }
 
         repeat {
-            let parts = self.dataCache!.split(separator: 10,
+            let parts = self.dataCache!.split(separator: self.separator,
                                               maxSplits: 1,
                                               omittingEmptySubsequences: false)
             self.dataCache = nil
@@ -73,7 +76,7 @@ public struct Lines: Sequence, IteratorProtocol {
                     // A one-length array of [Data] with a single zero-length
                     // Data instance.  Why?  IDK.  IMO, it should return a
                     // zero-length [Data] Array.  Oh well.  Life goes on.
-                    // However, one must distinguish between and original
+                    // However, one must distinguish between an original
                     // zero-length Data and a Data with a single sep character...
                     if parts[0].count == 0 {
                         return nil
@@ -88,17 +91,23 @@ public struct Lines: Sequence, IteratorProtocol {
         } while true
     }
 
-    public init(fromFile: String, chunkSize:Int = 65536) throws {
+    public init(fromFile: String, separator: UInt8 = 10, chunkSize:Int = 65536) throws {
         self.fromFile = fromFile
-        self.fileHandle = FileHandle.init(forReadingAtPath: fromFile)!
+        self.fileHandle = FileHandle.init(forReadingAtPath: fromFile)
         self.chunkSize = chunkSize
+        self.separator = separator
         self.dataCache = nil
+
+        if self.fileHandle == nil {
+            throw LinesError.cannotOpenFile(fromFile)
+        }
     }
 
-    public init(fromData: Data) {
+    public init(fromData: Data, separator: UInt8 = 10) {
         self.fromFile = nil
         self.fileHandle = nil
         self.chunkSize = 0
+        self.separator = separator
         self.dataCache = fromData
     }
 }
