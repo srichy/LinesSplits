@@ -55,7 +55,7 @@ public struct Lines: Sequence, IteratorProtocol {
             if let sepIdx = self.dataCache!.firstIndex(of: self.separator) {
                 let retStr = String(data: self.dataCache!.prefix(upTo: sepIdx),
                                     encoding: .ascii)
-                self.dataCache = self.dataCache!.dropFirst(sepIdx + 1)
+                self.dataCache = self.dataCache!.advanced(by:sepIdx + 1)
                 return retStr
             }
             // So, we have data, but no separator.  This could go on until

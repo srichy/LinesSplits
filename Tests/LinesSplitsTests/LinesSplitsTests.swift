@@ -31,6 +31,15 @@ final class LinesSplitsTests: XCTestCase {
         XCTAssertEqual(ls.next(), nil)
     }
 
+    func testDataLinesThree() throws {
+        var ls = Lines(fromData: "line 1\nline 2\nline 3".data(using: .utf8)!)
+
+        XCTAssertEqual(ls.next(), "line 1")
+        XCTAssertEqual(ls.next(), "line 2")
+        XCTAssertEqual(ls.next(), "line 3")
+        XCTAssertEqual(ls.next(), nil)
+    }
+
     func testDataLinesTwoFileBuf4() throws {
         var ls = try Lines(fromFile: "Tests/LinesSplitsTests/test-data-2-lines.txt",
                            chunkSize:4)
