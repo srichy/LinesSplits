@@ -100,3 +100,40 @@ public struct Lines: Sequence, IteratorProtocol {
         self.dataCache = fromData
     }
 }
+
+public struct AsyncAllLinesSequence<Base>: AsyncSequence, AsyncIteratorProtocol
+  where Base : AsyncSequence, Base.Element == UInt8 {
+    public typealias Element = String
+    var bytes: AsyncCharacterSequence<FileHandle.AsyncBytes>.AsyncIterator
+    var curStr: String = ""
+
+    /*
+     * I make no attempts to be particularly clever or efficient here. :(
+     */
+    public mutating func next() async throws -> String? {
+        while let b = try? await self.bytes.next() {
+            if b == "\n" {
+                let thisLine = curStr
+                curStr = ""
+                return thisLine
+            }
+            curStr.append(b)
+        }
+        if curStr.count > 0 {
+            let thisLine = curStr
+            curStr = ""
+            return thisLine
+        }
+        return nil
+    }
+
+    public func makeAsyncIterator() -> AsyncAllLinesSequence {
+        self
+    }
+}
+
+public extension FileHandle {
+    var allLines: AsyncAllLinesSequence<FileHandle.AsyncBytes> {
+        return AsyncAllLinesSequence(bytes: self.bytes.characters.makeAsyncIterator())
+    }
+}
