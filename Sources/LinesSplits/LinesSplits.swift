@@ -105,6 +105,7 @@ public struct AsyncAllLinesSequence<Base>: AsyncSequence, AsyncIteratorProtocol
   where Base : AsyncSequence, Base.Element == UInt8 {
     public typealias Element = String
     var bytes: AsyncCharacterSequence<FileHandle.AsyncBytes>.AsyncIterator
+    var autoCont: Bool = false
     var curStr: String = ""
 
     /*
@@ -113,6 +114,10 @@ public struct AsyncAllLinesSequence<Base>: AsyncSequence, AsyncIteratorProtocol
     public mutating func next() async throws -> String? {
         while let b = try? await self.bytes.next() {
             if b == "\n" {
+                if self.autoCont && curStr.hasSuffix("\\") {
+                    curStr.removeLast()
+                    continue
+                }
                 let thisLine = curStr
                 curStr = ""
                 return thisLine
@@ -135,5 +140,9 @@ public struct AsyncAllLinesSequence<Base>: AsyncSequence, AsyncIteratorProtocol
 public extension FileHandle {
     var allLines: AsyncAllLinesSequence<FileHandle.AsyncBytes> {
         return AsyncAllLinesSequence(bytes: self.bytes.characters.makeAsyncIterator())
+    }
+
+    var allLinesWithCont: AsyncAllLinesSequence<FileHandle.AsyncBytes> {
+        return AsyncAllLinesSequence(bytes: self.bytes.characters.makeAsyncIterator(), autoCont: true)
     }
 }
